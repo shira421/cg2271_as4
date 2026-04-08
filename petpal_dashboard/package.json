@@ -1,0 +1,20 @@
+{
+  "name": "petpal-dashboard-stack",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,green \"npm run dev -w @petpal/api\" \"npm run dev -w @petpal/web\"",
+    "dev:with-sim": "concurrently -n api,web,sim -c cyan,green,yellow \"npm run dev -w @petpal/api\" \"npm run dev -w @petpal/web\" \"npm run dev -w @petpal/simulator\"",
+    "dev:sim": "npm run dev -w @petpal/simulator",
+    "build": "npm run build -w @petpal/web",
+    "start": "concurrently -n api,web -c cyan,green \"npm run start -w @petpal/api\" \"npm run start -w @petpal/web\"",
+    "start:with-sim": "concurrently -n api,web,sim -c cyan,green,yellow \"npm run start -w @petpal/api\" \"npm run start -w @petpal/web\" \"npm run start -w @petpal/simulator\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

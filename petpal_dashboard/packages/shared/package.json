@@ -1,0 +1,9 @@
+{
+  "name": "@petpal/shared",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}
