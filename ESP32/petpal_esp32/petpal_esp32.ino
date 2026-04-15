@@ -35,6 +35,7 @@
 #include <DHT.h>
 #include <Wire.h>
 #include <MPU6050.h>
+#include <time.h>
 
 /* ========================= CHANGE THESE ================================== */
 #define WIFI_SSID "AndroidAP"
@@ -74,6 +75,7 @@
 #define DHT_READ_MS 2000
 #define STATUS_PRINT_MS 2000
 #define SHOCK_DEBOUNCE_MS 500
+#define NTP_TIMEOUT_MS 2000
 
 /* ========================= PET DETECTION ================================= */
 #define PET_NEAR_CM 30
@@ -323,6 +325,23 @@ void setupWiFi()
     {
         Serial0.printf("[WIFI] Connected! IP: %s\n",
                        WiFi.localIP().toString().c_str());
+
+        configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+        unsigned long start = millis();
+        time_t now = 0;
+        while (now < 1700000000 && (millis() - start) < NTP_TIMEOUT_MS)
+        {
+            delay(100);
+            time(&now);
+        }
+        if (now >= 1700000000)
+        {
+            Serial0.println("[TIME] NTP synced.");
+        }
+        else
+        {
+            Serial0.println("[TIME] NTP not synced yet; Firebase server timestamp will still be used.");
+        }
     }
     else
     {
@@ -334,6 +353,17 @@ void setupWiFi()
 
 String nowIso()
 {
+    time_t now = 0;
+    time(&now);
+    if (now >= 1700000000)
+    {
+        struct tm timeinfo;
+        gmtime_r(&now, &timeinfo);
+        char iso[25];
+        strftime(iso, sizeof(iso), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+        return String(iso);
+    }
+
     unsigned long sec = millis() / 1000;
     char buf[32];
     snprintf(buf, sizeof(buf), "2026-01-01T%02lu:%02lu:%02luZ",
@@ -421,7 +451,8 @@ void postTelemetry()
     json += "\"lastEvent\":\"" + lastEvent + "\",";
     json += "\"lastFeedTs\":" + (lastFeedTs.length() > 0 ? ("\"" + lastFeedTs + "\"") : "null") + ",";
     json += "\"lastPlayTs\":" + (lastPlayTs.length() > 0 ? ("\"" + lastPlayTs + "\"") : "null") + ",";
-    json += "\"updatedAt\":\"" + nowIso() + "\"";
+    json += "\"updatedAt\":\"" + nowIso() + "\",";
+    json += "\"updatedAtMs\":{\".sv\":\"timestamp\"}";
     json += "}";
 
     int code = http.PUT(json);

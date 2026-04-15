@@ -16,7 +16,7 @@ export function devicePath(child = "") {
 
 export async function firebaseFetch(path, init = {}) {
   if (!firebaseConfigured()) {
-    throw new Error("Set FIREBASE_DATABASE_URL in petpal_dashboard/.env");
+    throw new Error("Set FIREBASE_DATABASE_URL in petpal_dashboard/apps/web/.env.local");
   }
 
   const res = await fetch(firebaseUrl(path), {

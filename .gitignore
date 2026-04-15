@@ -1,3 +1,4 @@
 node_modules/
 /freertos.txt
 /freertos_instructions.txt
+petpal_dashboard/apps/web/.env.local

@@ -1,5 +1,13 @@
 import { devicePath, firebaseFetch } from "../firebase";
 
+function firebaseTimeToIso(value) {
+  const ms = Number(value);
+  if (!Number.isFinite(ms) || ms <= 0) return null;
+  const d = new Date(ms);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 export async function GET() {
   try {
     const [telemetry, command] = await Promise.all([
@@ -7,6 +15,7 @@ export async function GET() {
       firebaseFetch(devicePath("/command"))
     ]);
 
+    const receivedAt = firebaseTimeToIso(telemetry?.updatedAtMs) || telemetry?.updatedAt || null;
     const ultrasonicDetected = Number(telemetry?.distanceCm) <= Number(process.env.PET_DISTANCE_THRESHOLD_CM || 30);
     const shockDetected = telemetry?.shockDetected === true;
     const isAround = Boolean(ultrasonicDetected || shockDetected);
@@ -23,14 +32,14 @@ export async function GET() {
       telemetry: telemetry
         ? {
             ...telemetry,
-            receivedAt: telemetry.updatedAt
+            receivedAt
           }
         : null,
       presence: {
         isAround,
-        lastSeenAt: isAround ? telemetry?.updatedAt : null,
+        lastSeenAt: isAround ? receivedAt : null,
         lastTriggerSensor: triggerSensor,
-        updatedAt: telemetry?.updatedAt || null
+        updatedAt: receivedAt
       },
       petEvents: [],
       commands: command ? [command] : [],
