@@ -92,7 +92,10 @@ export default function HistoryPage() {
           <select value={eventType} onChange={(e) => setEventType(e.target.value)}>
             <option value="all">All</option>
             <option value="pet_around">Pet Around</option>
-            <option value="pet_not_around">Pet Not Around</option>
+            <option value="shock">Shock</option>
+            <option value="feed_now">Feed</option>
+            <option value="play_start">Play Start</option>
+            <option value="play_stop">Play Stop</option>
           </select>
         </label>
 

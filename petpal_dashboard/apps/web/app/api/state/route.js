@@ -1,5 +1,8 @@
 import { devicePath, firebaseFetch } from "../firebase";
 
+let lastLoggedEvent = null;
+let lastLoggedCommandId = null;
+
 function firebaseTimeToIso(value) {
   const ms = Number(value);
   if (!Number.isFinite(ms) || ms <= 0) return null;
@@ -26,6 +29,39 @@ export async function GET() {
         : shockDetected
           ? "shock"
           : null;
+
+    // Log new events to Firebase history (skip pet_left and boot)
+    if (telemetry?.lastEvent && telemetry.lastEvent !== lastLoggedEvent) {
+      lastLoggedEvent = telemetry.lastEvent;
+      const evt = telemetry.lastEvent;
+      if (evt !== "pet_left" && evt !== "boot") {
+        const kind = evt === "pet_arrived" ? "pet_around" : evt;
+        try {
+          await firebaseFetch(devicePath("/history/events"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              kind,
+              sensor: triggerSensor || "device",
+              message: kind,
+              ts: receivedAt || new Date().toISOString()
+            })
+          });
+        } catch (e) { /* don't block state response */ }
+      }
+    }
+
+    // Log new commands to Firebase history
+    if (command?.id && command.id !== lastLoggedCommandId) {
+      lastLoggedCommandId = command.id;
+      try {
+        await firebaseFetch(devicePath("/history/commands"), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(command)
+        });
+      } catch (e) { /* don't block state response */ }
+    }
 
     return Response.json({
       ok: true,

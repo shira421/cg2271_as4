@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const tabs = [
   { href: "/history", label: "History" },
-  { href: "/", label: "Dashboard" },
-  { href: "/future", label: "Future" }
+  { href: "/", label: "Dashboard" }
 ];
 
-export default function TopTabs() {
+export default function TopTabs({ onAiSummary }) {
   const pathname = usePathname();
+  const router = useRouter();
 
   return (
     <nav className="top-tabs" aria-label="Main tabs">
@@ -22,6 +22,19 @@ export default function TopTabs() {
           </Link>
         );
       })}
+      <button
+        className="top-tab"
+        onClick={() => {
+          if (onAiSummary) {
+            onAiSummary();
+          } else {
+            router.push("/?ai=1");
+          }
+        }}
+        type="button"
+      >
+        AI Summary
+      </button>
     </nav>
   );
 }

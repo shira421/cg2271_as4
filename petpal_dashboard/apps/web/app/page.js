@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import TopTabs from "./components/TopTabs";
 
 const refreshMs = 1800;
@@ -46,7 +47,18 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [playOptimistic, setPlayOptimistic] = useState(null);
+  const [aiSummary, setAiSummary] = useState("Analyzing your pet's environment...");
+  const [aiLoading, setAiLoading] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(true);
+  const searchParams = useSearchParams();
 
+  useEffect(() => {
+    if (searchParams.get("ai") === "1") {
+      setShowOverlay(true);
+      fetchSummary();
+    }
+  }, [searchParams]);
+  
   async function loadState() {
     try {
       const res = await fetch("/api/state", { cache: "no-store" });
@@ -63,6 +75,23 @@ export default function HomePage() {
     loadState();
     const id = setInterval(loadState, refreshMs);
     return () => clearInterval(id);
+  }, []);
+
+  async function fetchSummary() {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/pet-summary", { cache: "no-store" });
+      const json = await res.json();
+      if (json.summary) setAiSummary(json.summary);
+    } catch {
+      setAiSummary("Summary unavailable.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchSummary();
   }, []);
 
   async function send(type) {
@@ -90,7 +119,7 @@ export default function HomePage() {
   const playIsOn = playOptimistic === null ? playFromTelemetry : playOptimistic;
 
   useEffect(() => {
-      setPlayOptimistic(null);
+    setPlayOptimistic(null);
   }, [telemetry?.mode, telemetry?.playServoMoving]);
 
   const heartbeat = useMemo(() => {
@@ -134,8 +163,23 @@ export default function HomePage() {
 
   return (
     <main>
+      {showOverlay && (
+        <div className="ai-overlay" onClick={() => setShowOverlay(false)}>
+          <div className="ai-overlay-card" onClick={(e) => e.stopPropagation()}>
+            <h2>AI Pet Summary</h2>
+            <p className={`ai-summary-text ${aiLoading ? "ai-loading" : ""}`}>{aiSummary}</p>
+            <button className="ai-dismiss-btn" onClick={() => setShowOverlay(false)}>
+              View Dashboard
+            </button>
+          </div>
+        </div>
+      )}
+
       <h1>{process.env.NEXT_PUBLIC_DASHBOARD_TITLE || "PetPal Control Center"}</h1>
-      <TopTabs />
+      <TopTabs onAiSummary={() => {
+        setShowOverlay(true);
+        fetchSummary();
+      }} />
       <p className="subtitle">Smart pet insights from DHT, ultrasonic, and shock sensors.</p>
 
       <section className="hero-layout">

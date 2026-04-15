@@ -2,26 +2,20 @@ import { devicePath, firebaseFetch } from "../firebase";
 
 export async function GET() {
   try {
-    const [telemetry, command] = await Promise.all([
-      firebaseFetch(devicePath("/telemetry")),
-      firebaseFetch(devicePath("/command"))
+    const [events, commands] = await Promise.all([
+      firebaseFetch(devicePath("/history/events")),
+      firebaseFetch(devicePath("/history/commands"))
     ]);
 
-    const petEvents = telemetry?.lastEvent
-      ? [{
-          id: telemetry.updatedAt || "latest",
-          kind: telemetry.lastEvent,
-          sensor: "device",
-          message: telemetry.lastEvent,
-          ts: telemetry.updatedAt || null
-        }]
+    const petEvents = events
+      ? Object.entries(events).map(([id, ev]) => ({ id, ...ev })).reverse()
       : [];
 
-    return Response.json({
-      ok: true,
-      petEvents,
-      commands: command ? [command] : []
-    });
+    const cmdList = commands
+      ? Object.entries(commands).map(([id, cmd]) => ({ id, ...cmd })).reverse()
+      : [];
+
+    return Response.json({ ok: true, petEvents, commands: cmdList });
   } catch (error) {
     return Response.json({ ok: false, error: error.message || "Firebase history error" }, { status: 500 });
   }
