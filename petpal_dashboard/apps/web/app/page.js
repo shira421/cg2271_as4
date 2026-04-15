@@ -86,12 +86,12 @@ export default function HomePage() {
 
   const telemetry = state?.telemetry;
   const presence = state?.presence;
-  const playFromTelemetry = telemetry?.mode === "playing";
+  const playFromTelemetry = telemetry?.playServoMoving === true || telemetry?.mode === "playing";
   const playIsOn = playOptimistic === null ? playFromTelemetry : playOptimistic;
 
   useEffect(() => {
-    setPlayOptimistic(null);
-  }, [telemetry?.mode]);
+      setPlayOptimistic(null);
+  }, [telemetry?.mode, telemetry?.playServoMoving]);
 
   const heartbeat = useMemo(() => {
     if (!telemetry?.receivedAt) {

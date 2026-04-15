@@ -85,8 +85,8 @@
 /* ========================= WATER LEVELS ================================== */
 #define WATER_EMPTY 300 /* 0   - 50   = empty  */
 #define WATER_LOW 2000  /* 50  - 500  = low    */
-#define WATER_OK 2500  /* 500 - 2500 = ok     */
-                       /* 2500+      = full   */
+#define WATER_OK 2500   /* 500 - 2500 = ok     */
+                        /* 2500+      = full   */
 
 /* ========================= COMMANDS TO MCXC444 =========================== */
 #define CMD_PET_STATUS 0x01
@@ -637,6 +637,14 @@ void pollCommands()
 
     if (cmdType == "feed_now")
     {
+        /* Stop play mode first if active */
+        if (playServoMoving)
+        {
+            setLaser(false);
+            sendToMCX(CMD_STOP);
+            playServoMoving = false;
+            Serial0.println("[CMD] Play mode stopped for feeding");
+        }
         sendToMCX(CMD_FEED);
         buzzerTone(1000, 500);
         feederTriggered = true;
@@ -851,8 +859,8 @@ void loop()
         Serial0.printf("  Dist:   %d cm\n", lastDistanceCm);
         Serial0.printf("  Pet:    %s\n", presenceAround ? "YES" : "no");
         Serial0.printf("  Sensor: %s\n", presenceTriggerSensor.length() > 0
-                            ? presenceTriggerSensor.c_str()
-                            : "-");
+                                             ? presenceTriggerSensor.c_str()
+                                             : "-");
         Serial0.printf("  Temp:   %.1fC\n", lastTemp);
         Serial0.printf("  Humid:  %.1f%%\n", lastHumidity);
         Serial0.printf("  Water:  %d (%s)\n", lastWater,

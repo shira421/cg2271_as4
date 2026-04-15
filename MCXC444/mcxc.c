@@ -90,7 +90,7 @@
 #define SERVO_FEED_OPEN 2000
 #define SERVO_FEED_CLOSED 1000
 
-#define TIMER_CLK       62500
+#define TIMER_CLK       375000
 #define SERVO_MOD       ((TIMER_CLK / 50) - 1)
 
 /* Feed gate timing */
@@ -199,18 +199,16 @@ static void send_distance(uint16_t dist_cm)
 
 /* ========================= SERVO ========================================= */
 
-static void food_servo_set(uint16_t pulse_us)
-{
-    if (pulse_us < 500)  pulse_us = 500;
+static void food_servo_set(uint16_t pulse_us) {
+    if (pulse_us < 500) pulse_us = 500;
     if (pulse_us > 2500) pulse_us = 2500;
-    SERVO_TPM->CONTROLS[FOOD_SERVO_CHANNEL].CnV = pulse_us / 16;
+    SERVO_TPM->CONTROLS[FOOD_SERVO_CHANNEL].CnV = (pulse_us * 375) / 1000;
 }
 
-static void laser_servo_set(uint16_t pulse_us)
-{
-    if (pulse_us < 500)  pulse_us = 500;
+static void laser_servo_set(uint16_t pulse_us) {
+    if (pulse_us < 500) pulse_us = 500;
     if (pulse_us > 2500) pulse_us = 2500;
-    SERVO_TPM->CONTROLS[LASER_SERVO_CHANNEL].CnV = pulse_us / 16;
+    SERVO_TPM->CONTROLS[LASER_SERVO_CHANNEL].CnV = (pulse_us * 375) / 1000;
 }
 
 /* ========================= RTOS TASKS ==================================== */
