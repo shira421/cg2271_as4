@@ -29,6 +29,8 @@ function fmtDuration(sec) {
 
 function prettySensor(sensor) {
   if (!sensor) return "-";
+  if (sensor === "ultrasonic+gy") return "Ultrasonic + GY-521";
+  if (sensor === "gy") return "GY-521";
   if (sensor === "ultrasonic+shock") return "Ultrasonic + GY-521";
   if (sensor === "ultrasonic") return "Ultrasonic";
   if (sensor === "shock") return "GY-521";

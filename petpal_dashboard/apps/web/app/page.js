@@ -17,8 +17,10 @@ function fmtTs(ts) {
 function prettySensor(sensor) {
   if (!sensor) return "-";
   if (sensor === "ultrasonic+gy") return "Ultrasonic + GY";
+  if (sensor === "ultrasonic+shock") return "Ultrasonic + GY";
   if (sensor === "ultrasonic") return "Ultrasonic";
   if (sensor === "gy") return "GY";
+  if (sensor === "shock") return "GY";
   return sensor;
 }
 
