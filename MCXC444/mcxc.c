@@ -124,7 +124,7 @@ void PORTC_PORTD_IRQHandler(void) {
 
             if (echoSemaphore != NULL) xSemaphoreGiveFromISR(echoSemaphore, &higherPriorityTaskWoken);
         }
-        GPIO_PortClearInterruptFlags(ECHO_GPIO, 1U << ECHO_PIN);
+        GPIO_PortClearInterruptFlags(ECHO_GPIO, 1U  << ECHO_PIN);
     }
     portYIELD_FROM_ISR(higherPriorityTaskWoken);
 }
@@ -149,8 +149,11 @@ static void uart_send_byte(uint8_t b) {
 }
 
 static void send_distance(uint16_t dist_cm) {
+    uint8_t hi = (dist_cm >> 8) & 0xFF;
+    uint8_t lo = dist_cm & 0xFF;
+    uint8_t chk = 0x01 ^ hi ^ lo;
     uart_send_byte(0xAA); uart_send_byte(0x01);
-    uart_send_byte((dist_cm >> 8) & 0xFF); uart_send_byte(dist_cm & 0xFF);
+    uart_send_byte(hi); uart_send_byte(lo); uart_send_byte(chk);
 }
 
 static void food_servo_set(uint16_t pulse_us) {
@@ -180,28 +183,69 @@ static void sensor_task(void *pvParameters) {
 
 /* Task 2: Listen to ESP32 commands */
 static void command_task(void *pvParameters) {
-    uint8_t b, state = 0, rxType = 0;
+    uint8_t b, state = 0, rxType = 0, rxData = 0;
     while (1) {
         if (xQueueReceive(cmdQueue, &b, portMAX_DELAY) != pdTRUE) continue;
 
         switch (state) {
-        case 0: if (b == 0xBB) state = 1; break;
+        case 0:
+            if (b == 0xBB) state = 1;
+            break;
+
         case 1:
             rxType = b;
-            if (rxType == CMD_PET_STATUS) { state = 2; break; }
-            if (xSemaphoreTake(stateMutex, portMAX_DELAY) == pdTRUE) {
-                if (rxType == CMD_FEED) { PRINTF("[CMD] Feed\r\n"); currentMode = MODE_FEEDING; }
-                else if (rxType == CMD_PLAY) { PRINTF("[CMD] Play\r\n"); currentMode = MODE_PLAYING; }
-                else if (rxType == CMD_STOP) { PRINTF("[CMD] Stop\r\n"); currentMode = MODE_IDLE; }
-                xSemaphoreGive(stateMutex);
-            }
-            state = 0; break;
-        case 2:
             if (rxType == CMD_PET_STATUS) {
-                if (xSemaphoreTake(stateMutex, portMAX_DELAY) == pdTRUE) { petDetected = b; xSemaphoreGive(stateMutex); }
+                state = 2; /* next byte is data */
+            } else {
+                state = 4; /* next byte is checksum (no data) */
             }
-            state = 0; break;
-        default: state = 0; break;
+            break;
+
+        case 2:
+            /* Data byte for CMD_PET_STATUS */
+            rxData = b;
+            state = 3; /* next byte is checksum */
+            break;
+
+        case 3:
+        {
+            /* Checksum for commands with data: type ^ data */
+            uint8_t expected = rxType ^ rxData;
+            if (b == expected) {
+                if (rxType == CMD_PET_STATUS) {
+                    if (xSemaphoreTake(stateMutex, portMAX_DELAY) == pdTRUE) {
+                        petDetected = rxData;
+                        xSemaphoreGive(stateMutex);
+                    }
+                }
+            } else {
+                PRINTF("[UART] Checksum fail: got 0x%02X expected 0x%02X\r\n", b, expected);
+            }
+            state = 0;
+            break;
+        }
+
+        case 4:
+        {
+            /* Checksum for commands without data: type */
+            uint8_t expected = rxType;
+            if (b == expected) {
+                if (xSemaphoreTake(stateMutex, portMAX_DELAY) == pdTRUE) {
+                    if (rxType == CMD_FEED)      { PRINTF("[CMD] Feed\r\n"); currentMode = MODE_FEEDING; }
+                    else if (rxType == CMD_PLAY)  { PRINTF("[CMD] Play\r\n"); currentMode = MODE_PLAYING; }
+                    else if (rxType == CMD_STOP)  { PRINTF("[CMD] Stop\r\n"); currentMode = MODE_IDLE; }
+                    xSemaphoreGive(stateMutex);
+                }
+            } else {
+                PRINTF("[UART] Checksum fail: got 0x%02X expected 0x%02X\r\n", b, expected);
+            }
+            state = 0;
+            break;
+        }
+
+        default:
+            state = 0;
+            break;
         }
     }
 }
@@ -329,9 +373,9 @@ int main(void) {
     NVIC_SetPriority(PORTC_PORTD_IRQn, 5); EnableIRQ(PORTC_PORTD_IRQn);
     NVIC_SetPriority(UART2_FLEXIO_IRQn, 5); EnableIRQ(UART2_FLEXIO_IRQn);
 
-    xTaskCreate(sensor_task, "Sensor", configMINIMAL_STACK_SIZE + 128, NULL, 2, NULL);
-    xTaskCreate(command_task, "Command", configMINIMAL_STACK_SIZE + 256, NULL, 3, NULL);
-    xTaskCreate(actuator_task, "Actuator", configMINIMAL_STACK_SIZE + 256, NULL, 2, NULL);
+    xTaskCreate(sensor_task, "Sensor", configMINIMAL_STACK_SIZE + 128, NULL, 2, NULL); // 2nd highest
+    xTaskCreate(command_task, "Command", configMINIMAL_STACK_SIZE + 256, NULL, 3, NULL); //highest priority
+    xTaskCreate(actuator_task, "Actuator", configMINIMAL_STACK_SIZE + 256, NULL, 2, NULL); //2nd highest
 
     PRINTF("FreeRTOS starting. Waiting for ESP32 Commands...\r\n");
     vTaskStartScheduler();
